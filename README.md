@@ -1,192 +1,193 @@
-# PCA Portfolios in Risk Regimes
+# Principal Portfolios with Dynamic Risk Overlays
 
-### Can risk regimes make principal portfolios investable?
+### Dynamic, implementation-aware risk overlays for investable PCA factor portfolios
 
 ## Overview
 
-This repository studies whether principal components extracted from a panel of US tech equities can be treated as **investable equity factors**, and whether their attractiveness changes across **risk regimes**.
+This repository studies **dynamic risk overlays** applied to **investable principal portfolios** extracted from equity returns.
 
-The core framework combines:
+The starting point is a PCA factor-portfolio framework in which **PC1** emerges as the most robust investable baseline. This project then asks whether its return path can be improved through **dynamic, implementation-aware overlays** built from forward-looking risk signals.
 
-- **Linear factor extraction:** correlation-PCA on daily equity returns
-- **Factor portfolio construction:** factor-mimicking principal portfolios
-- **Regime conditioning:** LOW / MID / HIGH states defined from an implied-volatility proxy
-- **Robust estimation:** flexible probabilities, shrinkage covariance, and walk-forward re-estimation
-- **Validation:** Politis–Romano stationary block bootstrap
-- **Implementability checks:** turnover, loading stability, and spread-based transaction-cost proxies
+The current framework focuses on a **slow volatility-distribution overlay** based on:
 
-This repository is primarily about the **investability and regime dependence of principal portfolios**. Dynamic risk overlays are a downstream extension and are no longer the main narrative of this repo.
+- **HAR-RV forecasting** for forward realized volatility
+- **Residual bootstrapping** to obtain a predictive distribution, not just a point forecast
+- **Percentile-based state filters** with hysteresis and mild de-risking
+- **Spread-based implementation costs** via Corwin--Schultz one-way cost proxies
+
+The broader research agenda also includes:
+
+- **Short-horizon implied-volatility signals** for tactical risk control
+- **Alternative predictive engines** for volatility distributions, including OU/CIR challengers
+- **Downside-aware and regime-aware overlay rules** beyond pure volatility targeting
+
+This repository is therefore about **overlay design**, not factor extraction per se.
+
+---
+
+## Relationship to the PCA base project
+
+This project builds on a separate upstream repository centered on **PCA principal portfolios in risk regimes**.
+
+There, the main question is whether principal portfolios extracted from an equity universe are investable, regime-sensitive, and robust once implementation is taken seriously.
+
+Here, the focus is narrower and more practical:
+
+> Given an investable principal portfolio baseline, can dynamic overlays improve its **net downside-adjusted performance** without materially damaging carry?
+
+In the current implementation, the main testbed is **PC1**.
 
 ---
 
 ## Research Question
 
-Do higher-order principal portfolios become attractive in specific risk regimes, or does a simple buy-and-hold exposure to **PC1** remain the most robust investable choice once robustness, implementation, and turnover are taken seriously?
+Can predictive distributions of future risk be used to design **dynamic overlays** that improve the **net risk-adjusted performance** of investable principal portfolios?
+
+More specifically:
+
+1. Does the **distribution of forward realized volatility** contain useful information for de-risking principal portfolios?
+2. Can a **slow, low-turnover overlay** improve downside control while preserving most of the base strategy's return profile?
+3. Do **short-horizon IV signals** add value as tactical overrides on top of the slow overlay?
 
 ---
 
-## Main Findings
+## Current Framework
 
-### 1) PC1 is the strongest baseline exposure
+### 1) Base strategy
 
-Across bootstrap validation and walk-forward testing, **PC1** emerges as the most robust buy-and-hold principal portfolio.
+- Investable PCA factor portfolios extracted from equity returns
+- Current focus: **PC1** as the most robust baseline exposure
+- Walk-forward construction to avoid static in-sample weights
 
-In the current stationary block bootstrap (**N = 1000**), **PC1 gross** delivers approximately:
+### 2) Slow overlay layer
 
-- **42.6% median CAGR**
-- **1.59 median Sharpe ratio**
-- **7.22 median Martin ratio**
+- **Signal engine:** HAR-RV model for forward realized volatility
+- **Distribution engine:** residual bootstrap around the HAR conditional mean
+- **Overlay rule:** expanding-percentile state filter with hysteresis
+- **Trading frequency:** slow / low-turnover by design
 
-### 2) Higher-order PCs are more regime-dependent
+### 3) Fast overlay layer (under development)
 
-Higher PCs can look attractive in selected regimes, especially on conditional risk-adjusted metrics, but they are materially less stable through time.
+- Short-horizon **implied-volatility signals**
+- Intended role: tactical override during short-lived stress episodes
+- Not yet retained as the main signal engine
 
-### 3) Stability and implementability matter
+### 4) Cost model
 
-Walk-forward PCA shows a clear trade-off:
+- Asset-level **Corwin--Schultz** spread-based proxies
+- Aggregation through the underlying stock weights of the principal portfolio
+- Incremental overlay costs computed from changes in factor exposure
 
-- **PC1:** more stable loadings and lower turnover
-- **Higher PCs:** noisier rebalances and larger turnover spikes
+---
 
-This means that apparent performance improvements in higher PCs are harder to monetize in practice.
+## Main Findings So Far
 
-### 4) Risk regimes matter more for interpretation than for a clean rotational rule — so far
+### 1) The slow overlay is economically meaningful
 
-Regime conditioning is informative diagnostically: it helps explain when higher-order PCs look temporarily attractive, and why their behavior differs from the more stable **PC1** baseline.
+Using a **HAR-RV + residual bootstrap** predictive distribution and a mild percentile-based state rule, the **net OOS** profile of the PC1 strategy improves meaningfully.
 
-At the current stage, however, the strongest and cleanest conclusion is still that **PC1 remains the most robust investable principal portfolio**.
+### 2) The benefit comes from better path quality, not higher raw CAGR
+
+Relative to the base PC1 OOS strategy, the current slow overlay:
+
+- reduces annualized volatility
+- materially reduces max drawdown
+- improves Sharpe, Sortino, Calmar, and Martin ratios
+- only modestly reduces CAGR
+
+### 3) The score is more useful as a ranking/regime detector than as a perfectly calibrated probability
+
+The predictive distribution is especially useful for identifying **high-risk volatility states**, which makes percentile-based overlay rules more natural than continuous probability-to-exposure mappings.
+
+### 4) Drawdown-event logit models were explored, but not retained as the main engine
+
+Direct event models for forward drawdown were tested as challengers, but so far they have been less robust than volatility-distribution-based overlays.
+
+---
+
+## Current Reference Result
+
+For the current **PC1 OOS** testbed, the slow overlay improves the base profile approximately as follows:
+
+| Strategy | CAGR | Sharpe | Sortino | MaxDD | Calmar | Martin |
+|---|---:|---:|---:|---:|---:|---:|
+| PC1 base OOS | 37.66% | 1.62 | 2.25 | -24.33% | 1.55 | 7.60 |
+| PC1 slow overlay (net) | 36.63% | 1.74 | 2.49 | -17.78% | 2.06 | 8.03 |
+
+Interpretation:
+
+- **CAGR drag is modest**
+- **downside control improves materially**
+- **risk-adjusted performance improves even after costs**
 
 ---
 
 ## Methodology
 
-### Universe and frequency
+### Predictive risk layer
 
-- **Universe:** US tech equities
-- **Frequency:** daily returns
+- HAR-RV mean model for forward realized volatility
+- Residual bootstrap to obtain predictive distributions
+- Threshold events of the form:
 
-### Factor construction
+\[
+\Pr\big(RV^{fwd}_{t,t+H} > \tau \mid \mathcal F_t\big)
+\]
 
-- Correlation-based PCA on the equity return panel
-- Conversion of eigenvectors into **factor-mimicking principal portfolios**
-- Walk-forward re-estimation to avoid static in-sample weights
+### Decision layer
 
-### Regime definition
+- Expanding historical percentiles of the risk score
+- Mild de-risking states (rather than aggressive all-in/all-out switching)
+- Hysteresis to reduce unnecessary turnover
 
-- Regimes classified as **LOW / MID / HIGH** using an implied-volatility state variable
+### Validation layer
 
-### Risk and performance metrics
-
-- CAGR / Excess CAGR
-- Sharpe ratio
-- Sortino ratio
-- Calmar ratio
-- Martin ratio
-- Max drawdown
-- Ulcer index
-- Turnover
-- Loading stability / cosine similarity
-
-### Validation
-
-- **Politis–Romano stationary block bootstrap**
-- **N = 1000** simulations
-- Dependency-aware resampling to assess robustness beyond the realized path
-
-### Implementation-cost layer
-
-- Asset-level **Corwin–Schultz** bid-ask spread estimation from daily high/low data
-- Conversion from full spread to **one-way spread-based cost proxy**
-- Aggregation of costs through the turnover of the underlying stock weights of each PC portfolio
+- Development / OOS split
+- Net-of-cost evaluation
+- Path-quality metrics, not only raw return metrics
 
 ---
 
-## Selected Results
+## Why this repository exists
 
-### Bootstrap validation
+Many systematic strategies look good in backtests but become much less attractive once one accounts for:
 
-For **PC1 (overall, gross)**, the stationary block bootstrap indicates strong and persistent performance, with median values around:
+- unstable risk regimes
+- weak signal calibration
+- turnover
+- implementation costs
+- path-dependent investor pain
 
-| Metric | Median |
-|---|---:|
-| CAGR | 42.6% |
-| Sharpe | 1.59 |
-| Martin | 7.22 |
+This project asks a practical question:
 
-This supports the view that the strongest principal portfolio is not just an in-sample artifact.
-
-### Walk-forward baseline
-
-In walk-forward testing, **PC1** remains the cleanest investable baseline:
-
-- about **42.0% gross CAGR** overall
-- about **35.7% excess CAGR** overall
-- about **1.55 Sharpe** overall
-
-Spread-based costs modestly reduce performance, but do **not** overturn the ranking of PC1 as the most robust principal portfolio.
+> If the base factor portfolio is already investable, can we improve the quality of the return path with overlays that are dynamic, risk-based, and still realistic to trade?
 
 ---
 
-## Interpretation
+## Planned Extensions
 
-This project is **not** a claim that higher PCs are useless.
-
-Rather, it shows that:
-
-- higher PCs can carry useful regime information,
-- but their attractiveness is conditional,
-- and the jump from “interesting backtest” to “investable factor” depends heavily on stability and turnover.
-
-The core contribution of this repository is therefore:
-
-> **to study principal portfolios as investable factors, and to understand how risk regimes affect their robustness, turnover, and practical usability.**
-
-In that sense, the project sits at the intersection of:
-
-- factor investing,
-- quantitative risk modelling,
-- and implementation-aware portfolio construction.
-
----
-
-## Strategy Implications
-
-### Natural benchmark
-
-- **Buy & Hold PC1**
-
-### Current interpretation
-
-- **PC1** is the robust investable core
-- Higher-order PCs remain more conditional and regime-sensitive
-- Regime information is useful diagnostically, but does not yet justify a clean, dominant rotation rule
-
-### Related work / downstream extensions
-
-The following directions are being developed separately from the core PCA/regime narrative:
-
-- Dynamic risk overlays on principal portfolios
-- Short-horizon implied-volatility signals
-- Regime-based rotation across principal portfolios
-- Cross-country or cross-universe PCA rotation
-- Richer execution-cost modelling beyond spread-only proxies
+- **Fast implied-volatility override** on top of the slow overlay
+- **OU/CIR challengers** for volatility-distribution modelling
+- **Alternative downside-aware overlay rules**
+- **Abdi--Ranaldo execution-cost robustness checks**
+- **Extension beyond PC1** to other principal portfolios when justified by stability and costs
 
 ---
 
 ## Limitations
 
-- Corwin–Schultz costs should be interpreted as **spread-based implementation proxies**, not a full execution-cost model
-- Regime-conditional sub-sample metrics are informative diagnostically, but not all of them correspond directly to continuous investable strategies
-- Results remain sample-dependent and should be interpreted jointly with walk-forward and bootstrap evidence
-- The current universe and sample definition should always be read together with the implementation details in the notebook
+- Current results are strongest for the **slow volatility-distribution overlay**; other overlay families remain under study
+- Corwin--Schultz costs are **spread-based implementation proxies**, not full execution-cost models
+- Probability forecasts are currently most useful as **risk-state scores**, not as perfectly calibrated literal probabilities
+- The framework is still evolving; this repository documents the overlay layer as a standalone research track
 
 ---
 
 ## Repository Structure
 
-- `PCA_Portfolios_in_Risk_Regimes.ipynb` — main notebook
-- `requirements.txt`
+- `PCA_Portfolios_in_Risk_Regimes.ipynb` or successor notebook(s) — main research notebook(s)
 - `README.md`
+- `requirements.txt`
 
 ---
 

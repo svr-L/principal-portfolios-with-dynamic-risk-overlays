@@ -197,7 +197,7 @@ This project asks a practical question:
 
 This repository is part of a broader research programme on systematic factor investing:
 
-- **[PCA Portfolios in Risk Regimes](https://github.com/svr-L/PCA_Portfolios_in_Risk_Regimes)** — upstream project on PCA factor extraction, regime-conditional performance, and investability of principal portfolios
+- **[PCA Portfolios in Risk Regimes](https://github.com/svr-L/pca-portfolios-in-risk-regimes)** — upstream project on PCA factor extraction, regime-conditional performance, and investability of principal portfolios
 
 ---
 

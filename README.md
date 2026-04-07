@@ -186,7 +186,7 @@ This project asks a practical question:
 
 ```
 .
-├── principal_portfolios_dynamic_overlays.ipynb   # main research notebook
+├── principal_portfolios_with_dynamic_risk_overlays.ipynb
 ├── README.md
 └── requirements.txt
 ```

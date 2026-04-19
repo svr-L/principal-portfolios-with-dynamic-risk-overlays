@@ -29,7 +29,7 @@ This repository is therefore about **overlay design**, not factor extraction per
 
 ## Relationship to the PCA Base Project
 
-This project builds on a separate upstream repository centered on **[PCA principal portfolios in risk regimes] (https://github.com/svr-L/pca-portfolios-in-risk-regimes)**.
+This project builds on a separate upstream repository centered on **[PCA principal portfolios in Risk Regimes](https://github.com/svr-L/pca-portfolios-in-risk-regimes)**.
 
 There, the main question is whether principal portfolios extracted from an equity universe are investable, regime-sensitive, and robust once implementation is taken seriously.
 

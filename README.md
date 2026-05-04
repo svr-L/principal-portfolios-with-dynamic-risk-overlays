@@ -1,206 +1,122 @@
 # Principal Portfolios with Dynamic Risk Overlays
 
-### Dynamic, implementation-aware risk overlays for investable PCA factor portfolios
+Dynamic, implementation-aware risk overlays for investable PCA factor portfolios.
 
-## Overview
-
-This repository studies **dynamic risk overlays** applied to **investable principal portfolios** extracted from equity returns.
-
-The starting point is a PCA factor-portfolio framework in which **PC1** emerges as the most robust investable baseline. This project then asks whether its return path can be improved through **dynamic, implementation-aware overlays** built from forward-looking risk signals.
-
-This work sits at the intersection of quantitative risk modelling and systematic portfolio construction — using risk forecasting tools typically associated with risk management to improve investment decisions.
-
-The current framework focuses on a **slow volatility-distribution overlay** based on:
-
-- **HAR-RV forecasting** for forward realized volatility
-- **Residual bootstrapping** to obtain a predictive distribution, not just a point forecast
-- **Percentile-based state filters** with hysteresis and mild de-risking
-- **Spread-based implementation costs** via Corwin–Schultz one-way cost proxies
-
-The broader research agenda also includes:
-
-- **Short-horizon implied-volatility signals** for tactical risk control
-- **Alternative predictive engines** for volatility distributions, including OU/CIR challengers
-- **Downside-aware and regime-aware overlay rules** beyond pure volatility targeting
-
-This repository is therefore about **overlay design**, not factor extraction per se.
-
----
-
-## Relationship to the PCA Base Project
-
-This project builds on a separate upstream repository centered on **[PCA principal portfolios in Risk Regimes](https://github.com/svr-L/pca-portfolios-in-risk-regimes)**.
-
-There, the main question is whether principal portfolios extracted from an equity universe are investable, regime-sensitive, and robust once implementation is taken seriously.
-
-Here, the focus is narrower and more practical:
-
-> Given an investable principal portfolio baseline, can dynamic overlays improve its **net downside-adjusted performance** without materially damaging carry?
-
-In the current implementation, the main testbed is **PC1**.
-
----
+This repository studies whether probabilistic risk signals can improve the return path of an investable walk-forward PCA principal portfolio. The focus is not factor extraction itself, but the **overlay layer**: how to scale exposure to an already-investable PC1 portfolio using predictive volatility-state information, realistic transaction-cost proxies, and out-of-sample validation.
 
 ## Research Question
 
-Can predictive distributions of future risk be used to design **dynamic overlays** that improve the **net risk-adjusted performance** of investable principal portfolios?
+Can predictive distributions of future risk be used to design dynamic overlays that improve the **net downside-adjusted performance** of investable principal portfolios?
 
-More specifically:
+The current testbed is **PC1** extracted from a US large-cap technology equity universe using walk-forward correlation-PCA.
 
-1. Does the **distribution of forward realized volatility** contain useful information for de-risking principal portfolios?
-2. Can a **slow, low-turnover overlay** improve downside control while preserving most of the base strategy's return profile?
-3. Do **short-horizon IV signals** add value as tactical overrides on top of the slow overlay?
+## Current Result
 
----
+The retained result is an **OU-style log-volatility exceedance overlay**, selected by development-sample predictive discrimination and evaluated net of Corwin--Schultz spread-based implementation costs.
 
-## Current Framework
+| Strategy | CAGR | AnnVol | Sharpe | MaxDD | Martin |
+|---|---:|---:|---:|---:|---:|
+| PC1 base | 20.5% | 25.3% | 0.86 | -35.9% | 1.85 |
+| Selected OU overlay, net CS | 19.8% | 20.6% | 0.98 | -26.3% | 2.34 |
 
-### 1) Base Strategy
+**Interpretation.** The retained overlay sacrifices modest CAGR while materially improving path quality: lower volatility, lower maximum drawdown, and higher Sharpe / Martin ratios over the 2018--2026 OOS period.
 
-- Investable PCA factor portfolios extracted from equity returns
-- Current focus: **PC1** as the most robust baseline exposure
-- Walk-forward construction to avoid static in-sample weights
+Stationary block-bootstrap inference supports the drawdown result: the selected OU overlay improves MaxDD versus PC1 with high bootstrap frequency, while the Sharpe improvement is positive but less mechanically guaranteed.
 
-### 2) Slow Overlay Layer
+## Framework
 
-- **Signal engine:** HAR-RV model for forward realized volatility
-- **Distribution engine:** residual bootstrap around the HAR conditional mean
-- **Overlay rule:** expanding-percentile state filter with hysteresis
-- **Trading frequency:** slow / low-turnover by design
+### 1. Base Portfolio
 
-### 3) Fast Overlay Layer *(under development)*
+- US large-cap technology equity universe
+- Walk-forward PCA on the return correlation matrix
+- Factor-mimicking principal portfolios normalized to unit gross exposure
+- PC1 used as the robust investable baseline
+- Base PC1 returns are net of rebalance costs estimated from Corwin--Schultz one-way spread proxies
 
-- Short-horizon **implied-volatility signals**
-- Intended role: tactical override during short-lived stress episodes
-- Not yet retained as the main signal engine
+### 2. Retained Slow Layer: OU Log-Volatility Exceedance
 
-### 4) Cost Model
+The main overlay fits an OU-style model to positive realized-volatility state variables. For a candidate state variable and horizon, the model derives a predictive distribution for future log-volatility and computes an exceedance score:
 
-- Asset-level **Corwin–Schultz** spread-based proxies
-- Aggregation through the underlying stock weights of the principal portfolio
-- Incremental overlay costs computed from changes in factor exposure
+\[
+p_t = \mathbb{P}(X_{t+H} > \tau \mid \mathcal{F}_t).
+\]
 
----
+The score is mapped into exposure states using percentile thresholds and hysteresis.
 
-## Key Findings
+### 3. Medium Layer: HAR-RV Residual Bootstrap
 
-### 1) The slow overlay is economically meaningful
+A HAR-RV model forecasts forward realized volatility. Residual bootstrapping turns the point forecast into a predictive distribution and an exceedance probability. This layer is retained as a methodological benchmark and medium-speed component, but it is not the strongest standalone result in the current OOS sample.
 
-Using a **HAR-RV + residual bootstrap** predictive distribution and a mild percentile-based state rule, the **net OOS** profile of the PC1 strategy improves meaningfully.
+### 4. Fast Tactical Layer
 
-### 2) The benefit comes from better path quality, not higher raw CAGR
+The implemented fast layer is a conservative IV-based tactical override. It is included as an architecture component / challenger. A natural next iteration is a Kalman innovation / Mahalanobis surprise detector for short-horizon stress.
 
-Relative to the base PC1 OOS strategy, the current slow overlay:
+### 5. Combined Architecture
 
-- reduces annualized volatility
-- materially reduces max drawdown
-- improves Sharpe, Sortino, Calmar, and Martin ratios
-- only modestly reduces CAGR
+The combined overlay takes the minimum exposure across the selected OU slow layer, HAR medium layer, and fast tactical layer. In the current results, the combined architecture is robust but does not dominate the selected OU layer net of costs.
 
-### 3) The score is more useful as a ranking/regime detector than as a perfectly calibrated probability
+## Cost Model
 
-The predictive distribution is especially useful for identifying **high-risk volatility states**, which makes percentile-based overlay rules more natural than continuous probability-to-exposure mappings.
+Transaction costs are estimated using Corwin--Schultz high-low spread proxies:
 
-### 4) Drawdown-event logit models were explored, but not retained as the main engine
+1. estimate full proportional spread per asset;
+2. convert full spread to one-way cost by taking half the spread;
+3. aggregate one-way costs through the absolute PC1 weights;
+4. charge incremental overlay costs when scalar exposure changes.
 
-Direct event models for forward drawdown were tested as challengers, but so far they have been less robust than volatility-distribution-based overlays.
+For an overlay exposure \(e_t\), incremental overlay cost is approximated as:
 
----
+\[
+TC_t = |\Delta e_t| \cdot c^{PC1}_t,
+\]
 
-## Current Reference Result
+where
 
-For the current **PC1 OOS** testbed, the slow overlay improves the base profile approximately as follows:
+\[
+c^{PC1}_t =
+\frac{\sum_i |w_{i,t}| c^{CS}_{i,t}}{\sum_i |w_{i,t}|}.
+\]
 
-| Strategy | CAGR | Sharpe | Sortino | MaxDD | Calmar | Martin |
-|---|---:|---:|---:|---:|---:|---:|
-| PC1 base OOS | 37.66% | 1.62 | 2.25 | -24.33% | 1.55 | 7.60 |
-| PC1 slow overlay (net, CS) | 36.63% | 1.74 | 2.49 | -17.78% | 2.06 | 8.03 |
+No hard-coded flat bps cost is used for the main final results.
 
-**Interpretation:**
+## Validation
 
-- CAGR drag is modest (-1.0pp)
-- Downside control improves materially (MaxDD from -24.3% to -17.8%)
-- Risk-adjusted performance improves across all metrics, even after costs
-- Total overlay cost: ~0.59% over the OOS period, with only 9 rebalance events in 761 days
+The final notebook reports:
 
----
+- OOS period: **2018--2026**
+- QQQ and equal-weight universe benchmarks
+- gross and Corwin--Schultz-net performance for every overlay layer
+- binding-layer diagnostics
+- stationary block-bootstrap inference
+- ACF-matched block-length selection on absolute QQQ returns
 
-## Methodology
+## Important Methodological Caveat
 
-### Predictive Risk Layer
+The OU design sweep is selected by **development-sample AUC of the volatility-exceedance score**, not by OOS Sharpe or OOS P&L.
 
-- HAR-RV mean model for forward realized volatility
-- Residual bootstrap to obtain predictive distributions
-- Threshold events of the form `P(RV_fwd(t, t+H) > tau | F_t)`
-
-### Decision Layer
-
-- Expanding historical percentiles of the risk score
-- Mild de-risking states (rather than aggressive all-in/all-out switching)
-- Hysteresis to reduce unnecessary turnover
-
-### Validation Layer
-
-- Development / OOS split
-- Net-of-cost evaluation via Corwin–Schultz spread-based proxies
-- Path-quality metrics (Sharpe, Sortino, MaxDD, Calmar, Martin), not only raw return metrics
-
----
-
-## Why This Repository Exists
-
-Many systematic strategies look good in backtests but become much less attractive once one accounts for:
-
-- unstable risk regimes
-- weak signal calibration
-- turnover
-- implementation costs
-- path-dependent investor pain
-
-This project asks a practical question:
-
-> If the base factor portfolio is already investable, can we improve the quality of the return path with overlays that are dynamic, risk-based, and still realistic to trade?
-
----
-
-## Planned Extensions
-
-- **Fast implied-volatility override** on top of the slow overlay
-- **OU/CIR challengers** for volatility-distribution modelling
-- **Alternative downside-aware overlay rules**
-- **Abdi–Ranaldo execution-cost robustness checks**
-- **Extension beyond PC1** to other principal portfolios when justified by stability and costs
-
----
-
-## Limitations
-
-- Current results are based on a ~3-year OOS window (2023–2025); the sample includes limited stress episodes and results should be interpreted accordingly
-- Corwin–Schultz costs are **spread-based implementation proxies**, not full execution-cost models
-- Probability forecasts are currently most useful as **risk-state scores**, not as perfectly calibrated literal probabilities
-- The framework is still evolving; this repository documents the overlay layer as a standalone research track
-
----
+This correction avoids OOS selection bias. However, the development window is short and calm; the overlay state machine may not trade in development (`dev_trades = 0` across candidates). For that reason, development-period overlay P&L is degenerate and cannot be used as a selection criterion. The AUC-based selection should therefore be interpreted as predictive-signal selection, with this limitation disclosed.
 
 ## Repository Structure
 
-```
+```text
 .
 ├── principal_portfolios_with_dynamic_risk_overlays.ipynb
 ├── README.md
 └── requirements.txt
 ```
 
----
+## Relationship to Upstream Work
 
-## Related Work
+This repository is downstream of a separate PCA / regime-analysis project. The upstream project studies whether PCA principal portfolios are investable and regime-sensitive. This repository assumes PC1 as the investable base and focuses only on **dynamic risk overlays**.
 
-This repository is part of a broader research programme on systematic factor investing:
+## Planned Extensions
 
-- **[PCA Portfolios in Risk Regimes](https://github.com/svr-L/pca-portfolios-in-risk-regimes)** — upstream project on PCA factor extraction, regime-conditional performance, and investability of principal portfolios
-
----
+- replace / benchmark the fast IV layer with a Kalman innovation / Mahalanobis surprise overlay;
+- add subperiod tables: 2018--2019, Covid, 2022 bear market, 2023--2026;
+- add cost sensitivity around Corwin--Schultz estimates;
+- add deterministic volatility-targeting and drawdown-control baselines;
+- replicate the framework across additional universes, sectors, and regions.
 
 ## Author
 
-**Saverio Lauriola**
+Saverio Lauriola

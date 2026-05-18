@@ -4,4 +4,5 @@ matplotlib
 statsmodels
 scipy
 yfinance
-arch
+ipython
+notebook

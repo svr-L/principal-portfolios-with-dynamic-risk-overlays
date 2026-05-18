@@ -186,7 +186,7 @@ This is why the current combined architecture is treated as a research extension
 
 ```text
 .
-├── principal_portfolios_with_dynamic_risk_overlays_clean.ipynb
+├── principal_portfolios_with_dynamic_risk_overlays.ipynb
 ├── README.md
 └── requirements.txt
 ```
